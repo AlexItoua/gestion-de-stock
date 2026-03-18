@@ -207,8 +207,17 @@ class MouvementStockSeeder extends Seeder
         ];
 
         foreach ($mouvements as $data) {
-            $data['reference'] = MouvementStock::genererReference();
-            MouvementStock::create($data);
-        }
+    // Vérifie si un mouvement identique existe déjà (même produit, boutique, type, quantité, date)
+    MouvementStock::firstOrCreate(
+        [
+            'produit_id'     => $data['produit_id'],
+            'boutique_id'    => $data['boutique_id'],
+            'type_mouvement' => $data['type_mouvement'],
+            'quantite'       => $data['quantite'],
+            'date_mouvement' => $data['date_mouvement'],
+        ],
+        array_merge($data, ['reference' => MouvementStock::genererReference()])
+    );
+}
     }
 }
