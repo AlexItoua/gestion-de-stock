@@ -8,6 +8,7 @@ use App\Models\MouvementStock;
 use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Carbon\Carbon;
 
 class StockController extends Controller
 {
@@ -22,7 +23,7 @@ class StockController extends Controller
 
         $query = Stock::query()
             ->with([
-                'produit:id,nom,code_produit,seuil_alerte',  // ← simplifié, sans sous-relations
+                'produit:id,nom,code_produit,seuil_alerte',
                 'boutique:id,nom,code'
             ])
             ->select([
@@ -142,10 +143,10 @@ class StockController extends Controller
     public function ajustement(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'produit_id'    => 'required|exists:produits,id',
-            'boutique_id'   => 'required|exists:boutiques,id',
-            'quantite'      => 'required|numeric',
-            'commentaire'   => 'required|string|max:500',
+            'produit_id'  => 'required|exists:produits,id',
+            'boutique_id' => 'required|exists:boutiques,id',
+            'quantite'    => 'required|numeric',
+            'commentaire' => 'required|string|max:500',
         ]);
 
         $quantite = $validated['quantite'];
@@ -199,45 +200,140 @@ class StockController extends Controller
         );
 
         return response()->json([
-            'message'  => 'Transfert effectué.',
-            'sortie'   => $mouvements['sortie'],
-            'entree'   => $mouvements['entree'],
+            'message' => 'Transfert effectué.',
+            'sortie'  => $mouvements['sortie'],
+            'entree'  => $mouvements['entree'],
         ], 201);
     }
 
     /**
      * GET /api/stocks/mouvements
+     * ──────────────────────────────────────────────────────────────────
+     * Historique des mouvements de stock.
+     * Accessible à tous les rôles authentifiés.
+     *
+     * Filtres disponibles (query params) :
+     *   ?search=         Recherche par nom ou code produit
+     *   ?type_mouvement= entree|sortie|perte|transfert_entree|
+     *                    transfert_sortie|ajustement_positif|ajustement_negatif|vente
+     *   ?boutique_id=    Filtrer par boutique
+     *   ?produit_id=     Filtrer par produit
+     *   ?date_debut=     YYYY-MM-DD
+     *   ?date_fin=       YYYY-MM-DD
+     *   ?per_page=       Nombre par page (max 100, défaut 30)
      */
     public function mouvements(Request $request): JsonResponse
     {
-        $perPage = min($request->per_page ?? 30, 50);
+        $perPage = min($request->per_page ?? 30, 100);
 
         $query = MouvementStock::with([
-            'produit:id,nom,code_produit',
-            'boutique:id,nom,code',
-            'user:id,name'
-        ])->orderByDesc('date_mouvement');
+                'produit:id,nom,code_produit,unite_stock,module_stock_id',
+                'produit.moduleStock:id,nom,slug',
+                'boutique:id,nom',
+                'user:id,name',
+            ])
+            ->orderByDesc('date_mouvement');
 
-        if ($request->boutique_id) {
-            $query->where('boutique_id', $request->boutique_id);
-        }
-
-        if ($request->produit_id) {
-            $query->where('produit_id', $request->produit_id);
-        }
-
-        if ($request->type_mouvement) {
+        // ── Filtres ──────────────────────────────────────────────────
+        if ($request->filled('type_mouvement')) {
             $query->where('type_mouvement', $request->type_mouvement);
         }
 
-        if ($request->date_debut) {
+        if ($request->filled('boutique_id')) {
+            $query->where('boutique_id', $request->boutique_id);
+        }
+
+        if ($request->filled('produit_id')) {
+            $query->where('produit_id', $request->produit_id);
+        }
+
+        if ($request->filled('search')) {
+            $query->whereHas('produit', function ($q) use ($request) {
+                $q->where('nom', 'like', "%{$request->search}%")
+                  ->orWhere('code_produit', 'like', "%{$request->search}%");
+            });
+        }
+
+        if ($request->filled('date_debut')) {
             $query->whereDate('date_mouvement', '>=', $request->date_debut);
         }
 
-        if ($request->date_fin) {
+        if ($request->filled('date_fin')) {
             $query->whereDate('date_mouvement', '<=', $request->date_fin);
         }
 
-        return response()->json($query->paginate($perPage));
+        // Vendeur limité à sa propre boutique
+        if ($request->user()->hasRole('vendeur') && $request->user()->boutique_id) {
+            $query->where('boutique_id', $request->user()->boutique_id);
+        }
+
+        $mouvements = $query->paginate($perPage);
+
+        // ── Groupement par période pour l'affichage front ────────────
+        $today     = now()->toDateString();
+        $yesterday = now()->subDay()->toDateString();
+
+        $grouped = $mouvements->getCollection()
+            ->groupBy(function ($m) use ($today, $yesterday) {
+                $date = Carbon::parse($m->date_mouvement)->toDateString();
+                if ($date === $today)     return "Aujourd'hui";
+                if ($date === $yesterday) return 'Hier';
+                return 'Précédemment';
+            })
+            ->map(function ($items, $periode) {
+                return [
+                    'periode'     => $periode,
+                    'nb'          => $items->count(),
+                    'mouvements'  => $items->map(fn($m) => $this->formaterMouvement($m))->values(),
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'meta' => [
+                'current_page' => $mouvements->currentPage(),
+                'last_page'    => $mouvements->lastPage(),
+                'per_page'     => $mouvements->perPage(),
+                'total'        => $mouvements->total(),
+            ],
+            'grouped' => $grouped,
+        ]);
+    }
+
+    /**
+     * Formate un mouvement pour la réponse API (adapté à la maquette)
+     */
+    private function formaterMouvement(MouvementStock $m): array
+    {
+        // Détermine si c'est une entrée ou une sortie (pour le signe + / -)
+        $typesEntree = ['entree', 'transfert_entree', 'ajustement_positif'];
+        $estEntree   = in_array($m->type_mouvement, $typesEntree);
+
+        return [
+            'id'             => $m->id,
+            'type_mouvement' => $m->type_mouvement,
+            'est_entree'     => $estEntree,
+            'quantite'       => (float) $m->quantite,
+            'quantite_affichage' => ($estEntree ? '+' : '-') . number_format(abs($m->quantite), 2, '.', '') ,
+            'unite'          => $m->produit->unite_stock ?? '',
+            'valeur_totale'  => (float) ($m->valeur_totale ?? 0),
+            'commentaire'    => $m->commentaire,
+            'date_mouvement' => $m->date_mouvement,
+            'date_formatee'  => Carbon::parse($m->date_mouvement)->format('d M Y · H:i'),
+            'produit' => [
+                'id'           => $m->produit->id,
+                'nom'          => $m->produit->nom,
+                'code_produit' => $m->produit->code_produit,
+                'module'       => $m->produit->moduleStock?->nom,
+            ],
+            'boutique' => [
+                'id'  => $m->boutique->id,
+                'nom' => $m->boutique->nom,
+            ],
+            'user' => $m->user ? [
+                'id'   => $m->user->id,
+                'name' => $m->user->name,
+            ] : null,
+        ];
     }
 }

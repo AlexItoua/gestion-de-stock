@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             CategorieSeeder::class,
             ProduitSeeder::class,
             StockSeeder::class,
+            MouvementStockSeeder::class,
         ]);
     }
 }
