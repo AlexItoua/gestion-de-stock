@@ -26,23 +26,33 @@ class AuthController extends Controller
         $phone        = $this->normalizePhone($request->phone);
         $phoneFormate = $this->formatPhone($phone);
 
-        // Cherche par les deux formats possibles en BDD
+        // 🔍 Recherche utilisateur
         $user = User::where('phone', $phone)
                     ->orWhere('phone', $phoneFormate)
                     ->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        // ❌ 1. Numéro introuvable
+        if (!$user) {
             throw ValidationException::withMessages([
-                'phone' => ['Numéro ou mot de passe incorrect.'],
+                'phone' => ['Ce numéro n\'est lié à aucun compte.'],
             ]);
         }
 
+        // ❌ 2. Mot de passe incorrect
+        if (!Hash::check($request->password, $user->password)) {
+            throw ValidationException::withMessages([
+                'password' => ['Le mot de passe inséré est incorrect.'],
+            ]);
+        }
+
+        // ❌ 3. Compte désactivé
         if (!$user->is_active) {
             return response()->json([
                 'message' => 'Votre compte est désactivé. Contactez l\'administrateur.',
             ], 403);
         }
 
+        // ✅ Génération token
         $token = $user->createToken($request->device_name ?? 'api-token');
 
         return response()->json([
@@ -113,38 +123,30 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $user->update(['password' => Hash::make($request->new_password)]);
+        $user->update([
+            'password' => Hash::make($request->new_password)
+        ]);
 
         return response()->json([
             'message' => 'Mot de passe modifié avec succès.'
         ]);
     }
 
-    // ─── Helpers téléphone ────────────────────────────────────────────────────
+    // ─── Helpers téléphone ─────────────────────────────────────
 
-    /**
-     * Retire espaces, tirets, points
-     * "06 873 11 72" → "0687311 72"
-     */
     private function normalizePhone(string $phone): string
     {
         return preg_replace('/[\s\-\.]/', '', $phone);
     }
 
-    /**
-     * Formate en format stocké en BDD
-     * "0687311 72" → "+242 06 873 11 72"
-     */
     private function formatPhone(string $phone): string
     {
         $digits = preg_replace('/\D/', '', $phone);
 
-        // Retire le préfixe pays si présent
         if (str_starts_with($digits, '242')) {
             $digits = substr($digits, 3);
         }
 
-        // Format Congo : 9 chiffres → +242 0X XXX XX XX
         if (strlen($digits) === 9) {
             return '+242 ' . substr($digits, 0, 2) . ' '
                            . substr($digits, 2, 3) . ' '
