@@ -13,8 +13,8 @@ class MouvementStockSeeder extends Seeder
 {
     public function run(): void
     {
-        $centrale = Boutique::where('code', 'BCT')->first();
-        $depot    = Boutique::where('code', 'DEP')->first();
+        $comptoir = Boutique::where('code', 'CVT')->first(); // Comptoir de vente
+        $depot    = Boutique::where('code', 'DEP')->first(); // Dépôt principal
         $admin    = User::where('email', 'admin@gestionstock.com')->first();
 
         $p1 = Produit::where('code_produit', 'PSC-0001')->first();
@@ -22,7 +22,6 @@ class MouvementStockSeeder extends Seeder
         $p3 = Produit::where('code_produit', 'PSC-0003')->first();
         $p4 = Produit::where('code_produit', 'PSC-0004')->first();
 
-        // ── Toujours relatif à maintenant ────────────────────────────
         $today     = now();
         $hier      = now()->subDay();
         $avantHier = now()->subDays(2);
@@ -37,7 +36,7 @@ class MouvementStockSeeder extends Seeder
 
         $mouvements = [
 
-            // ── AUJOURD'HUI : entrées ──────────────────────────────────
+            // ── AUJOURD'HUI : entrées dépôt (réception fournisseur) ───
             [
                 'produit_id'     => $p1->id,
                 'boutique_id'    => $depot->id,
@@ -64,29 +63,31 @@ class MouvementStockSeeder extends Seeder
                 'commentaire'    => 'Réception fournisseur',
                 'date_mouvement' => $today->copy()->setTime(9, 0),
             ],
+
+            // ── AUJOURD'HUI : transfert dépôt → comptoir ──────────────
             [
                 'produit_id'     => $p3->id,
-                'boutique_id'    => $centrale->id,
+                'boutique_id'    => $comptoir->id,
                 'user_id'        => $admin->id,
-                'type_mouvement' => 'entree',
+                'type_mouvement' => 'transfert_entree',
                 'quantite'       => 25,
-                'quantite_avant' => $getQte($p3, $centrale),
-                'quantite_apres' => $getQte($p3, $centrale) + 25,
+                'quantite_avant' => $getQte($p3, $comptoir),
+                'quantite_apres' => $getQte($p3, $comptoir) + 25,
                 'prix_unitaire'  => $p3->prix_achat,
                 'valeur_totale'  => 25 * $p3->prix_achat,
-                'commentaire'    => 'Transfert dépôt',
+                'commentaire'    => 'Transfert dépôt → comptoir',
                 'date_mouvement' => $today->copy()->setTime(10, 15),
             ],
 
-            // ── AUJOURD'HUI : sorties ──────────────────────────────────
+            // ── AUJOURD'HUI : ventes comptoir ──────────────────────────
             [
                 'produit_id'     => $p1->id,
-                'boutique_id'    => $centrale->id,
+                'boutique_id'    => $comptoir->id,
                 'user_id'        => $admin->id,
                 'type_mouvement' => 'vente',
                 'quantite'       => 8,
-                'quantite_avant' => $getQte($p1, $centrale),
-                'quantite_apres' => max(0, $getQte($p1, $centrale) - 8),
+                'quantite_avant' => $getQte($p1, $comptoir),
+                'quantite_apres' => max(0, $getQte($p1, $comptoir) - 8),
                 'prix_unitaire'  => $p1->prix_vente_gros,
                 'valeur_totale'  => 8 * $p1->prix_vente_gros,
                 'commentaire'    => 'Vente client',
@@ -94,12 +95,12 @@ class MouvementStockSeeder extends Seeder
             ],
             [
                 'produit_id'     => $p2->id,
-                'boutique_id'    => $centrale->id,
+                'boutique_id'    => $comptoir->id,
                 'user_id'        => $admin->id,
                 'type_mouvement' => 'vente',
                 'quantite'       => 12,
-                'quantite_avant' => $getQte($p2, $centrale),
-                'quantite_apres' => max(0, $getQte($p2, $centrale) - 12),
+                'quantite_avant' => $getQte($p2, $comptoir),
+                'quantite_apres' => max(0, $getQte($p2, $comptoir) - 12),
                 'prix_unitaire'  => $p2->prix_vente_gros,
                 'valeur_totale'  => 12 * $p2->prix_vente_gros,
                 'commentaire'    => 'Vente client',
@@ -107,12 +108,12 @@ class MouvementStockSeeder extends Seeder
             ],
             [
                 'produit_id'     => $p4->id,
-                'boutique_id'    => $centrale->id,
+                'boutique_id'    => $comptoir->id,
                 'user_id'        => $admin->id,
                 'type_mouvement' => 'perte',
                 'quantite'       => 2,
-                'quantite_avant' => $getQte($p4, $centrale),
-                'quantite_apres' => max(0, $getQte($p4, $centrale) - 2),
+                'quantite_avant' => $getQte($p4, $comptoir),
+                'quantite_apres' => max(0, $getQte($p4, $comptoir) - 2),
                 'prix_unitaire'  => $p4->prix_achat,
                 'valeur_totale'  => 2 * $p4->prix_achat,
                 'commentaire'    => 'Produit endommagé',
@@ -135,12 +136,12 @@ class MouvementStockSeeder extends Seeder
             ],
             [
                 'produit_id'     => $p3->id,
-                'boutique_id'    => $centrale->id,
+                'boutique_id'    => $comptoir->id,
                 'user_id'        => $admin->id,
                 'type_mouvement' => 'vente',
                 'quantite'       => 15,
-                'quantite_avant' => $getQte($p3, $centrale),
-                'quantite_apres' => max(0, $getQte($p3, $centrale) - 15),
+                'quantite_avant' => $getQte($p3, $comptoir),
+                'quantite_apres' => max(0, $getQte($p3, $comptoir) - 15),
                 'prix_unitaire'  => $p3->prix_vente_gros,
                 'valeur_totale'  => 15 * $p3->prix_vente_gros,
                 'commentaire'    => 'Vente client',
@@ -163,12 +164,12 @@ class MouvementStockSeeder extends Seeder
             ],
             [
                 'produit_id'     => $p4->id,
-                'boutique_id'    => $centrale->id,
+                'boutique_id'    => $comptoir->id,
                 'user_id'        => $admin->id,
                 'type_mouvement' => 'vente',
                 'quantite'       => 20,
-                'quantite_avant' => $getQte($p4, $centrale),
-                'quantite_apres' => max(0, $getQte($p4, $centrale) - 20),
+                'quantite_avant' => $getQte($p4, $comptoir),
+                'quantite_apres' => max(0, $getQte($p4, $comptoir) - 20),
                 'prix_unitaire'  => $p4->prix_vente_gros,
                 'valeur_totale'  => 20 * $p4->prix_vente_gros,
                 'commentaire'    => 'Vente client',
@@ -191,12 +192,12 @@ class MouvementStockSeeder extends Seeder
             ],
             [
                 'produit_id'     => $p2->id,
-                'boutique_id'    => $centrale->id,
+                'boutique_id'    => $comptoir->id,
                 'user_id'        => $admin->id,
                 'type_mouvement' => 'ajustement',
                 'quantite'       => 10,
-                'quantite_avant' => $getQte($p2, $centrale),
-                'quantite_apres' => $getQte($p2, $centrale) + 10,
+                'quantite_avant' => $getQte($p2, $comptoir),
+                'quantite_apres' => $getQte($p2, $comptoir) + 10,
                 'prix_unitaire'  => 0,
                 'valeur_totale'  => 0,
                 'commentaire'    => 'Correction inventaire',

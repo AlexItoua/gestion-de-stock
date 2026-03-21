@@ -13,18 +13,17 @@ class VenteSeeder extends Seeder
 {
     public function run(): void
     {
-        $centrale = Boutique::where('code', 'BCT')->first();
+        $comptoir = Boutique::where('code', 'CVT')->first();
         $admin    = User::where('email', 'admin@gestionstock.com')->first();
         $p1       = Produit::where('code_produit', 'PSC-0001')->first();
         $p2       = Produit::where('code_produit', 'PSC-0002')->first();
         $p3       = Produit::where('code_produit', 'PSC-0003')->first();
 
         $ventes = [
-            // ── Vente aujourd'hui 1 ───────────────────────────────────
             [
                 'vente' => [
                     'numero_vente'  => 'VTE-' . now()->format('Y') . '-000010',
-                    'boutique_id'   => $centrale->id,
+                    'boutique_id'   => $comptoir->id,
                     'user_id'       => $admin->id,
                     'montant_total' => 8 * $p1->prix_vente_gros,
                     'montant_paye'  => 8 * $p1->prix_vente_gros,
@@ -44,12 +43,10 @@ class VenteSeeder extends Seeder
                     ],
                 ],
             ],
-
-            // ── Vente aujourd'hui 2 ───────────────────────────────────
             [
                 'vente' => [
                     'numero_vente'  => 'VTE-' . now()->format('Y') . '-000011',
-                    'boutique_id'   => $centrale->id,
+                    'boutique_id'   => $comptoir->id,
                     'user_id'       => $admin->id,
                     'montant_total' => 5 * $p2->prix_vente_gros + 3 * $p3->prix_vente_gros,
                     'montant_paye'  => 5 * $p2->prix_vente_gros + 3 * $p3->prix_vente_gros,
@@ -77,12 +74,10 @@ class VenteSeeder extends Seeder
                     ],
                 ],
             ],
-
-            // ── Vente aujourd'hui 3 ───────────────────────────────────
             [
                 'vente' => [
                     'numero_vente'  => 'VTE-' . now()->format('Y') . '-000012',
-                    'boutique_id'   => $centrale->id,
+                    'boutique_id'   => $comptoir->id,
                     'user_id'       => $admin->id,
                     'montant_total' => 10 * $p2->prix_vente_gros,
                     'montant_paye'  => 10 * $p2->prix_vente_gros,
@@ -109,13 +104,9 @@ class VenteSeeder extends Seeder
                 ['numero_vente' => $v['vente']['numero_vente']],
                 $v['vente']
             );
-
             foreach ($v['details'] as $detail) {
                 VenteDetail::firstOrCreate(
-                    [
-                        'vente_id'   => $vente->id,
-                        'produit_id' => $detail['produit_id'],
-                    ],
+                    ['vente_id' => $vente->id, 'produit_id' => $detail['produit_id']],
                     $detail
                 );
             }

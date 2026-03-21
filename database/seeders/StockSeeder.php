@@ -11,18 +11,21 @@ class StockSeeder extends Seeder
 {
     public function run(): void
     {
-        $centrale = Boutique::where('code', 'BCT')->first();
-        $depot    = Boutique::where('code', 'DEP')->first();
+        $depot    = Boutique::where('code', 'DEP')->first(); // Dépôt Poisson Salé
+        $comptoir = Boutique::where('code', 'CVT')->first(); // Comptoir de Vente
 
         $stocks = [
-            ['code' => 'PSC-0001', 'boutique' => $centrale, 'quantite' => 45,  'quantite_detail' => 3],
+            // ── Dépôt (stock en gros — cartons reçus fournisseur) ─────
             ['code' => 'PSC-0001', 'boutique' => $depot,    'quantite' => 120, 'quantite_detail' => 0],
-            ['code' => 'PSC-0002', 'boutique' => $centrale, 'quantite' => 60,  'quantite_detail' => 2],
             ['code' => 'PSC-0002', 'boutique' => $depot,    'quantite' => 200, 'quantite_detail' => 0],
-            ['code' => 'PSC-0003', 'boutique' => $centrale, 'quantite' => 80,  'quantite_detail' => 4],
             ['code' => 'PSC-0003', 'boutique' => $depot,    'quantite' => 250, 'quantite_detail' => 0],
-            ['code' => 'PSC-0004', 'boutique' => $centrale, 'quantite' => 30,  'quantite_detail' => 1],
             ['code' => 'PSC-0004', 'boutique' => $depot,    'quantite' => 90,  'quantite_detail' => 0],
+
+            // ── Comptoir (stock transféré pour vente gros + détail) ───
+            ['code' => 'PSC-0001', 'boutique' => $comptoir, 'quantite' => 45,  'quantite_detail' => 3],
+            ['code' => 'PSC-0002', 'boutique' => $comptoir, 'quantite' => 60,  'quantite_detail' => 2],
+            ['code' => 'PSC-0003', 'boutique' => $comptoir, 'quantite' => 80,  'quantite_detail' => 4],
+            ['code' => 'PSC-0004', 'boutique' => $comptoir, 'quantite' => 30,  'quantite_detail' => 1],
         ];
 
         foreach ($stocks as $s) {
