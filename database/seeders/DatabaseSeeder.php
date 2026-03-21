@@ -18,6 +18,8 @@ class DatabaseSeeder extends Seeder
             ProduitSeeder::class,
             StockSeeder::class,
             MouvementStockSeeder::class,
+            VenteSeeder::class,
+            AlerteSeeder::class,
         ]);
     }
 }

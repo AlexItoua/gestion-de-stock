@@ -22,6 +22,7 @@ class MouvementStockSeeder extends Seeder
         $p3 = Produit::where('code_produit', 'PSC-0003')->first();
         $p4 = Produit::where('code_produit', 'PSC-0004')->first();
 
+        // ── Toujours relatif à maintenant ────────────────────────────
         $today     = now();
         $hier      = now()->subDay();
         $avantHier = now()->subDays(2);
@@ -34,12 +35,9 @@ class MouvementStockSeeder extends Seeder
             return $stock ? (float) $stock->quantite : 0;
         };
 
-        // Types ENUM valides : entree, vente, perte, ajustement,
-        //                      transfert_sortie, transfert_entree, retour_client
-
         $mouvements = [
 
-            // ── AUJOURD'HUI : entrées ──────────────────────────────────────
+            // ── AUJOURD'HUI : entrées ──────────────────────────────────
             [
                 'produit_id'     => $p1->id,
                 'boutique_id'    => $depot->id,
@@ -80,7 +78,7 @@ class MouvementStockSeeder extends Seeder
                 'date_mouvement' => $today->copy()->setTime(10, 15),
             ],
 
-            // ── AUJOURD'HUI : sorties ──────────────────────────────────────
+            // ── AUJOURD'HUI : sorties ──────────────────────────────────
             [
                 'produit_id'     => $p1->id,
                 'boutique_id'    => $centrale->id,
@@ -121,7 +119,7 @@ class MouvementStockSeeder extends Seeder
                 'date_mouvement' => $today->copy()->setTime(15, 0),
             ],
 
-            // ── HIER ───────────────────────────────────────────────────────
+            // ── HIER ──────────────────────────────────────────────────
             [
                 'produit_id'     => $p1->id,
                 'boutique_id'    => $depot->id,
@@ -149,7 +147,7 @@ class MouvementStockSeeder extends Seeder
                 'date_mouvement' => $hier->copy()->setTime(16, 0),
             ],
 
-            // ── AVANT-HIER ─────────────────────────────────────────────────
+            // ── AVANT-HIER ────────────────────────────────────────────
             [
                 'produit_id'     => $p2->id,
                 'boutique_id'    => $depot->id,
@@ -177,7 +175,7 @@ class MouvementStockSeeder extends Seeder
                 'date_mouvement' => $avantHier->copy()->setTime(11, 0),
             ],
 
-            // ── IL Y A 5 JOURS ─────────────────────────────────────────────
+            // ── IL Y A 5 JOURS ────────────────────────────────────────
             [
                 'produit_id'     => $p1->id,
                 'boutique_id'    => $depot->id,
@@ -195,7 +193,7 @@ class MouvementStockSeeder extends Seeder
                 'produit_id'     => $p2->id,
                 'boutique_id'    => $centrale->id,
                 'user_id'        => $admin->id,
-                'type_mouvement' => 'ajustement', // ← 'ajustement' (pas ajustement_positif)
+                'type_mouvement' => 'ajustement',
                 'quantite'       => 10,
                 'quantite_avant' => $getQte($p2, $centrale),
                 'quantite_apres' => $getQte($p2, $centrale) + 10,
@@ -207,17 +205,18 @@ class MouvementStockSeeder extends Seeder
         ];
 
         foreach ($mouvements as $data) {
-    // Vérifie si un mouvement identique existe déjà (même produit, boutique, type, quantité, date)
-    MouvementStock::firstOrCreate(
-        [
-            'produit_id'     => $data['produit_id'],
-            'boutique_id'    => $data['boutique_id'],
-            'type_mouvement' => $data['type_mouvement'],
-            'quantite'       => $data['quantite'],
-            'date_mouvement' => $data['date_mouvement'],
-        ],
-        array_merge($data, ['reference' => MouvementStock::genererReference()])
-    );
-}
+            MouvementStock::firstOrCreate(
+                [
+                    'produit_id'     => $data['produit_id'],
+                    'boutique_id'    => $data['boutique_id'],
+                    'type_mouvement' => $data['type_mouvement'],
+                    'quantite'       => $data['quantite'],
+                    'date_mouvement' => $data['date_mouvement'],
+                ],
+                array_merge($data, [
+                    'reference' => MouvementStock::genererReference()
+                ])
+            );
+        }
     }
 }
