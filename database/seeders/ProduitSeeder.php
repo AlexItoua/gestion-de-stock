@@ -35,6 +35,8 @@ class ProduitSeeder extends Seeder
                 'seuil_alerte'          => 10,
                 'stock_minimum'         => 5,
                 'vente_detail_possible' => true,
+                'date_expiration'       => now()->addDays(90),  // Expire dans 3 mois
+                'is_active'             => true,
             ],
             [
                 'code_produit'          => 'PSC-0002',
@@ -51,6 +53,8 @@ class ProduitSeeder extends Seeder
                 'seuil_alerte'          => 15,
                 'stock_minimum'         => 8,
                 'vente_detail_possible' => true,
+                'date_expiration'       => now()->addDays(15),  // ⚠️ Expire bientôt (15j)
+                'is_active'             => true,
             ],
             [
                 'code_produit'          => 'PSC-0003',
@@ -67,6 +71,8 @@ class ProduitSeeder extends Seeder
                 'seuil_alerte'          => 20,
                 'stock_minimum'         => 10,
                 'vente_detail_possible' => true,
+                'date_expiration'       => now()->addDays(120), // Expire dans 4 mois
+                'is_active'             => true,
             ],
             [
                 'code_produit'          => 'PSC-0004',
@@ -83,11 +89,13 @@ class ProduitSeeder extends Seeder
                 'seuil_alerte'          => 10,
                 'stock_minimum'         => 5,
                 'vente_detail_possible' => true,
+                'date_expiration'       => now()->addDays(7),   // ⚠️ Expire dans 7 jours
+                'is_active'             => true,
             ],
         ];
 
         foreach ($produits as $data) {
-            Produit::firstOrCreate(['code_produit' => $data['code_produit']], $data);
+            Produit::updateOrCreate(['code_produit' => $data['code_produit']], $data);
         }
     }
 }

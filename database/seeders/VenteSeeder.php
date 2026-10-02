@@ -19,10 +19,12 @@ class VenteSeeder extends Seeder
         $p2       = Produit::where('code_produit', 'PSC-0002')->first();
         $p3       = Produit::where('code_produit', 'PSC-0003')->first();
 
+        $now = now();
+
         $ventes = [
             [
                 'vente' => [
-                    'numero_vente'  => 'VTE-' . now()->format('Y') . '-000010',
+                    'numero_vente'  => 'VTE-' . $now->format('Y') . '-000010',
                     'boutique_id'   => $comptoir->id,
                     'user_id'       => $admin->id,
                     'montant_total' => 8 * $p1->prix_vente_gros,
@@ -30,7 +32,7 @@ class VenteSeeder extends Seeder
                     'statut'        => 'finalisee',
                     'mode_paiement' => 'especes',
                     'nom_client'    => 'Client Dupont',
-                    'date_vente'    => now()->setTime(9, 30),
+                    'date_vente'    => $now->copy()->setTime(9, 30),
                 ],
                 'details' => [
                     [
@@ -45,7 +47,7 @@ class VenteSeeder extends Seeder
             ],
             [
                 'vente' => [
-                    'numero_vente'  => 'VTE-' . now()->format('Y') . '-000011',
+                    'numero_vente'  => 'VTE-' . $now->format('Y') . '-000011',
                     'boutique_id'   => $comptoir->id,
                     'user_id'       => $admin->id,
                     'montant_total' => 5 * $p2->prix_vente_gros + 3 * $p3->prix_vente_gros,
@@ -53,7 +55,7 @@ class VenteSeeder extends Seeder
                     'statut'        => 'finalisee',
                     'mode_paiement' => 'mobile_money',
                     'nom_client'    => 'Client Martin',
-                    'date_vente'    => now()->setTime(11, 0),
+                    'date_vente'    => $now->copy()->setTime(11, 0),
                 ],
                 'details' => [
                     [
@@ -76,7 +78,7 @@ class VenteSeeder extends Seeder
             ],
             [
                 'vente' => [
-                    'numero_vente'  => 'VTE-' . now()->format('Y') . '-000012',
+                    'numero_vente'  => 'VTE-' . $now->format('Y') . '-000012',
                     'boutique_id'   => $comptoir->id,
                     'user_id'       => $admin->id,
                     'montant_total' => 10 * $p2->prix_vente_gros,
@@ -84,7 +86,7 @@ class VenteSeeder extends Seeder
                     'statut'        => 'finalisee',
                     'mode_paiement' => 'especes',
                     'nom_client'    => 'Client Mbeki',
-                    'date_vente'    => now()->setTime(14, 0),
+                    'date_vente'    => $now->copy()->setTime(14, 0),
                 ],
                 'details' => [
                     [
@@ -100,12 +102,12 @@ class VenteSeeder extends Seeder
         ];
 
         foreach ($ventes as $v) {
-            $vente = Vente::firstOrCreate(
+            $vente = Vente::updateOrCreate(
                 ['numero_vente' => $v['vente']['numero_vente']],
                 $v['vente']
             );
             foreach ($v['details'] as $detail) {
-                VenteDetail::firstOrCreate(
+                VenteDetail::updateOrCreate(
                     ['vente_id' => $vente->id, 'produit_id' => $detail['produit_id']],
                     $detail
                 );
