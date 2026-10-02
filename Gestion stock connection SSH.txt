@@ -1,0 +1,7 @@
+Gestion stock connection SSH
+
+-----------------------------------
+
+adresse: ssh -p 65002 u526490036@45.84.205.1
+
+mot de passe : Stock@2026!

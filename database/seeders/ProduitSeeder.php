@@ -35,7 +35,7 @@ class ProduitSeeder extends Seeder
                 'seuil_alerte'          => 10,
                 'stock_minimum'         => 5,
                 'vente_detail_possible' => true,
-                'date_expiration'       => now()->addDays(90),  // Expire dans 3 mois
+                'date_expiration'       => now()->addDays(90)->toDateString(),
                 'is_active'             => true,
             ],
             [
@@ -53,7 +53,7 @@ class ProduitSeeder extends Seeder
                 'seuil_alerte'          => 15,
                 'stock_minimum'         => 8,
                 'vente_detail_possible' => true,
-                'date_expiration'       => now()->addDays(15),  // ⚠️ Expire bientôt (15j)
+                'date_expiration'       => now()->addDays(15)->toDateString(),
                 'is_active'             => true,
             ],
             [
@@ -71,7 +71,7 @@ class ProduitSeeder extends Seeder
                 'seuil_alerte'          => 20,
                 'stock_minimum'         => 10,
                 'vente_detail_possible' => true,
-                'date_expiration'       => now()->addDays(120), // Expire dans 4 mois
+                'date_expiration'       => now()->addDays(120)->toDateString(),
                 'is_active'             => true,
             ],
             [
@@ -89,7 +89,7 @@ class ProduitSeeder extends Seeder
                 'seuil_alerte'          => 10,
                 'stock_minimum'         => 5,
                 'vente_detail_possible' => true,
-                'date_expiration'       => now()->addDays(7),   // ⚠️ Expire dans 7 jours
+                'date_expiration'       => now()->addDays(7)->toDateString(),
                 'is_active'             => true,
             ],
         ];
