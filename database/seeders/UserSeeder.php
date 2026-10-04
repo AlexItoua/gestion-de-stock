@@ -18,7 +18,7 @@ class UserSeeder extends Seeder
         $admin = User::firstOrCreate(['email' => 'admin@garelshop.com'], [
             'name'        => 'Administrateur',
             'password'    => Hash::make('admin@2024'),
-            'phone'       => '+242 873 11 72',
+            'phone'       => '+242 06 873 11 72',
             'boutique_id' => $depot->id,
             'is_active'   => true,
         ]);

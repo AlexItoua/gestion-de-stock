@@ -1,0 +1,5 @@
+je recupere son push et je travail sur la parti lien de paiement 
+
+le listing  des personne payé 
+affiché au moin 3 personnes quand on clique
+et la vu detail  
