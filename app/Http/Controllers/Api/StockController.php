@@ -16,14 +16,26 @@ class StockController extends Controller
 
     /**
      * GET /api/stocks
+     * ──────────────────────────────────────────────────────────────
+     * Liste du stock par produit × boutique.
+     *
+     * Filtres query params :
+     *   ?boutique_id=    Filtrer par boutique
+     *   ?module_slug=    Filtrer par module (riz-cereales, huiles, ...)
+     *   ?categorie_id=   Filtrer par catégorie
+     *   ?stock_faible=1  Uniquement les produits sous le seuil d'alerte
+     *   ?search=         Recherche par nom ou code produit
+     *   ?filter=         in_stock | alert | empty | all (défaut all)
+     *   ?per_page=       Nombre par page (max 500, défaut 100)
      */
     public function index(Request $request): JsonResponse
     {
-        $perPage = min($request->per_page ?? 20, 50);
+        $perPage = min((int) ($request->per_page ?? 100), 500);
+        $filter  = $request->input('filter', 'all');
 
         $query = Stock::query()
             ->with([
-                'produit:id,nom,code_produit,seuil_alerte',
+                'produit:id,nom,code_produit,seuil_alerte,unite_stock',
                 'boutique:id,nom,code'
             ])
             ->select([
@@ -35,20 +47,40 @@ class StockController extends Controller
                 'valeur_stock'
             ]);
 
-        if ($request->boutique_id) {
+        // ── Filtres ──────────────────────────────────────────────
+        if ($request->filled('boutique_id')) {
             $query->where('boutique_id', $request->boutique_id);
         }
 
-        if ($request->module_slug) {
+        if ($request->filled('module_slug')) {
             $query->whereHas('produit.moduleStock', function ($q) use ($request) {
                 $q->where('slug', $request->module_slug);
             });
         }
 
-        if ($request->categorie_id) {
+        if ($request->filled('categorie_id')) {
             $query->whereHas('produit', function ($q) use ($request) {
                 $q->where('categorie_id', $request->categorie_id);
             });
+        }
+
+        if ($request->filled('search')) {
+            $query->whereHas('produit', function ($q) use ($request) {
+                $q->where('nom', 'like', "%{$request->search}%")
+                  ->orWhere('code_produit', 'like', "%{$request->search}%");
+            });
+        }
+
+        // ── Filtres rapides (filter=) ────────────────────────────
+        if ($filter === 'in_stock') {
+            $query->where('quantite', '>', 0);
+        } elseif ($filter === 'alert') {
+            $query->whereHas('produit', function ($q) {
+                $q->whereColumn('stocks.quantite', '<=', 'produits.seuil_alerte')
+                  ->whereColumn('stocks.quantite', '>', 0);
+            });
+        } elseif ($filter === 'empty') {
+            $query->where('quantite', 0);
         }
 
         if ($request->stock_faible) {
@@ -57,14 +89,13 @@ class StockController extends Controller
             });
         }
 
-        if ($request->search) {
-            $query->whereHas('produit', function ($q) use ($request) {
-                $q->where('nom', 'like', "%{$request->search}%")
-                  ->orWhere('code_produit', 'like', "%{$request->search}%");
-            });
-        }
-
-        $stocks = $query->orderByDesc('id')->paginate($perPage);
+        // ⭐ TRI : produits avec du stock EN PREMIER
+        //     puis par quantité décroissante
+        $stocks = $query
+            ->orderByRaw('CASE WHEN quantite > 0 THEN 0 ELSE 1 END')  // stock > 0 en premier
+            ->orderByDesc('quantite')                                  // puis par quantité
+            ->orderBy('produit_id')                                    // puis par produit
+            ->paginate($perPage);
 
         return response()->json($stocks);
     }
@@ -208,19 +239,6 @@ class StockController extends Controller
 
     /**
      * GET /api/stocks/mouvements
-     * ──────────────────────────────────────────────────────────────────
-     * Historique des mouvements de stock.
-     * Accessible à tous les rôles authentifiés.
-     *
-     * Filtres disponibles (query params) :
-     *   ?search=         Recherche par nom ou code produit
-     *   ?type_mouvement= entree|sortie|perte|transfert_entree|
-     *                    transfert_sortie|ajustement_positif|ajustement_negatif|vente
-     *   ?boutique_id=    Filtrer par boutique
-     *   ?produit_id=     Filtrer par produit
-     *   ?date_debut=     YYYY-MM-DD
-     *   ?date_fin=       YYYY-MM-DD
-     *   ?per_page=       Nombre par page (max 100, défaut 30)
      */
     public function mouvements(Request $request): JsonResponse
     {
@@ -234,7 +252,6 @@ class StockController extends Controller
             ])
             ->orderByDesc('date_mouvement');
 
-        // ── Filtres ──────────────────────────────────────────────────
         if ($request->filled('type_mouvement')) {
             $query->where('type_mouvement', $request->type_mouvement);
         }
@@ -262,14 +279,12 @@ class StockController extends Controller
             $query->whereDate('date_mouvement', '<=', $request->date_fin);
         }
 
-        // Vendeur limité à sa propre boutique
         if ($request->user()->hasRole('vendeur') && $request->user()->boutique_id) {
             $query->where('boutique_id', $request->user()->boutique_id);
         }
 
         $mouvements = $query->paginate($perPage);
 
-        // ── Groupement par période pour l'affichage front ────────────
         $today     = now()->toDateString();
         $yesterday = now()->subDay()->toDateString();
 
@@ -301,11 +316,10 @@ class StockController extends Controller
     }
 
     /**
-     * Formate un mouvement pour la réponse API (adapté à la maquette)
+     * Formate un mouvement pour la réponse API
      */
     private function formaterMouvement(MouvementStock $m): array
     {
-        // Détermine si c'est une entrée ou une sortie (pour le signe + / -)
         $typesEntree = ['entree', 'transfert_entree', 'ajustement_positif'];
         $estEntree   = in_array($m->type_mouvement, $typesEntree);
 
@@ -314,7 +328,7 @@ class StockController extends Controller
             'type_mouvement' => $m->type_mouvement,
             'est_entree'     => $estEntree,
             'quantite'       => (float) $m->quantite,
-            'quantite_affichage' => ($estEntree ? '+' : '-') . number_format(abs($m->quantite), 2, '.', '') ,
+            'quantite_affichage' => ($estEntree ? '+' : '-') . number_format(abs($m->quantite), 2, '.', ''),
             'unite'          => $m->produit->unite_stock ?? '',
             'valeur_totale'  => (float) ($m->valeur_totale ?? 0),
             'commentaire'    => $m->commentaire,
