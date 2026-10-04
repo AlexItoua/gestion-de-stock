@@ -9,24 +9,26 @@ class BoutiqueSeeder extends Seeder
 {
     public function run(): void
     {
-        // Zone 1 — Réception et stockage des cartons
-        Boutique::firstOrCreate(['code' => 'DEP'], [
-            'nom'         => 'Dépôt Poisson Salé',
+        // ─── Dépôt principal (stockage) ───
+        Boutique::updateOrCreate(['code' => 'DEP'], [
+            'nom'         => 'Dépôt Garel Shop',
             'adresse'     => 'Zone Industrielle, Ouenzé',
             'ville'       => 'Brazzaville',
             'telephone'   => '+242 06 987 65 43',
-            'responsable' => 'Marie Ngoma',
+            'responsable' => 'Gérant Garel Shop',
             'type'        => 'depot',
+            'is_active'   => true,
         ]);
 
-        // Zone 2 — Comptoir de vente (gros et détail)
-        Boutique::firstOrCreate(['code' => 'CVT'], [
-            'nom'         => 'Comptoir de Vente',
+        // ─── Boutique principale ───
+        Boutique::updateOrCreate(['code' => 'GAREL'], [
+            'nom'         => 'Garel Shop',
             'adresse'     => 'Avenue de la Paix, Centre-ville',
             'ville'       => 'Brazzaville',
             'telephone'   => '+242 06 123 45 67',
-            'responsable' => 'Jean-Pierre Moukala',
+            'responsable' => 'Gérant Garel Shop',
             'type'        => 'boutique',
+            'is_active'   => true,
         ]);
     }
 }
